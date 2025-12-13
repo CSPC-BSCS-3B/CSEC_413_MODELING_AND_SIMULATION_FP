@@ -27,15 +27,15 @@
 
         <!-- Game Header -->
         <div class="game-header">
-            <h1>🎮 Russian Roulette - Round {{ game_info.round }}</h1>
+            <h1>Russian Roulette - Round {{ game_info.round }}</h1>
             <div class="players-info">
-                <span>👦 {{ game_info.player1_name }}</span>
+                <span>{{ game_info.player1_name }}</span>
                 <span> VS </span>
-                <span>{% if game_info.is_casino_mode %}🤖{% else %}👧{% endif %} {{ game_info.player2_name }}</span>
+                <span>{{ game_info.player2_name }}</span>
             </div>
             <div class="current-player">
                 Current Player: <strong id="currentPlayerName">{{ game_info.current_player }}</strong>
-                <span id="playerIcon">{% if game_info.current_player_is_boy %}👦{% elif game_info.is_casino_mode %}🤖{% else %}👧{% endif %}</span>
+                <span id="playerIcon"></span>
             </div>
         </div>
 
@@ -52,19 +52,19 @@
             <p>Chambers: {{ game_info.chambers }} | Bullets: {{ game_info.bullets }} | Checked: {{ game_info.chambers_checked }}/{{ game_info.chambers }}</p>
             <p id="roundInfo">Round: <span id="roundNumber">{{ game_info.round }}</span></p>
             {% if game_info.prob_info %}
-            <p style="color: #e74c3c; font-weight: bold;">📊 {{ game_info.prob_info }}</p>
+            <p style="color: #e74c3c; font-weight: bold;">{{ game_info.prob_info }}</p>
             {% endif %}
             {% if game_info.mode == '3' %}
-            <p style="color: #667eea; font-size: 12px;">⚙️ Tweaked Game Mode Active</p>
+            <p style="color: #667eea; font-size: 12px;">Tweaked Game Mode Active</p>
             {% elif game_info.mode == '4' %}
-            <p style="color: #f39c12; font-size: 12px;">💰 Casino Mode - Win to Double, Lose to Forfeit!</p>
+            <p style="color: #f39c12; font-size: 12px;">Casino Mode - Win to Double, Lose to Forfeit!</p>
             {% endif %}
         </div>
 
         <!-- Action Buttons -->
         <div class="game-controls" id="gameControls">
             <button id="actionButton" class="btn btn-primary btn-large" onclick="advanceGame()">
-                ▶️ CONTINUE
+                CONTINUE
             </button>
         </div>
 
@@ -88,19 +88,15 @@
             const button = document.getElementById('actionButton');
             
             if (gameOver) {
-                if (isCasinoMode) {
-                    button.textContent = '🎰 PLAY AGAIN';
-                } else {
-                    button.textContent = '🎮 PLAY AGAIN';
-                }
+                button.textContent = 'PLAY AGAIN';
                 button.className = 'btn btn-success btn-large';
                 button.onclick = isCasinoMode ? casinoRematch : newGame;
             } else if (gamePhase === 'start' || gamePhase === 'getting_gun') {
-                button.textContent = '▶️ CONTINUE';
+                button.textContent = 'CONTINUE';
                 button.className = 'btn btn-primary btn-large';
                 button.onclick = advanceGame;
             } else if (gamePhase === 'pointing') {
-                button.textContent = '🔫 PULL TRIGGER';
+                button.textContent = 'PULL TRIGGER';
                 button.className = 'btn btn-danger btn-large';
                 button.onclick = advanceGame;
             }
@@ -139,7 +135,7 @@
 
         async function pullTrigger() {
             const button = document.getElementById('actionButton');
-            button.textContent = '⏳ PULLING...';
+            button.textContent = 'PULLING...';
 
             try {
                 const response = await fetch('/api/pull_trigger', {
@@ -183,7 +179,7 @@
                         setTimeout(() => {
                             // Update current player info
                             document.getElementById('currentPlayerName').textContent = result.current_player;
-                            document.getElementById('playerIcon').textContent = result.current_player_is_boy ? '👦' : (isCasinoMode ? '🤖' : '👧');
+                            document.getElementById('playerIcon').textContent = '';
                             currentPlayerIsBoy = result.current_player_is_boy;
                             gamePhase = 'getting_gun';
                             
