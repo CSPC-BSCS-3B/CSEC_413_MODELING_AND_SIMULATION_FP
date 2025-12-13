@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monte Carlo Simulation - Russian Roulette</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .simulation-container {
+            max-width: 1200px;
+        }
+        
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stats-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .stats-card.fair {
+            border-color: #27ae60;
+        }
+        
+        .stats-card.tweaked {
+            border-color: #e74c3c;
+        }
+        
+        .stats-card h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .stats-card.fair h3 {
+            color: #27ae60;
+        }
+        
+        .stats-card.tweaked h3 {
+            color: #e74c3c;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stat-label {
+            color: #666;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .stat-value.positive {
+            color: #27ae60;
+        }
+        
+        .stat-value.negative {
+            color: #e74c3c;
+        }
+        
+        .plot-section {
+            margin-bottom: 30px;
+        }
+        
+        .plot-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .plot-image {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .explanation-box {
+            background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        .explanation-box h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .explanation-box ul {
+            margin-left: 20px;
+        }
+        
+        .explanation-box li {
+            margin: 5px 0;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container simulation-container">
+        <!-- Header -->
+        <div class="title-section">
+            <h1>📊 Monte Carlo Simulation</h1>
+            <h2>Russian Roulette Casino Game Analysis</h2>
+            <p>CSEC 413 - Modeling and Simulation Final Project</p>
+        </div>
+
+        <!-- Configuration -->
+        <div class="config-section">
+            <h3>🎲 Simulation Configuration</h3>
+            <div class="config-grid">
+                <div class="form-group">
+                    <label for="numPlays">Number of Plays:</label>
+                    <input type="number" id="numPlays" value="10000" min="100" max="100000">
+                    <small>Recommended: 10,000 for accurate results</small>
+                </div>
+                <div class="form-group">
+                    <label for="betAmount">Bet Amount (₱):</label>
+                    <input type="number" id="betAmount" value="100" min="1" max="10000">
+                    <small>Amount wagered per play</small>
+                </div>
+            </div>
+            <button id="runSimulation" class="btn btn-primary btn-large" style="margin-top: 20px;" onclick="runSimulation()">
+                🚀 Run Simulation
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingSection" class="loading hidden">
+            <div class="loading-spinner"></div>
+            <p>Running Monte Carlo Simulation...</p>
+            <p>Simulating thousands of games, please wait...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="resultsSection" class="hidden">
+            <!-- Explanation -->
+            <div class="explanation-box">
+                <h4>📚 What This Simulation Shows</h4>
+                <ul>
+                    <li><strong>Fair Game:</strong> Standard 6-chamber revolver with 1 bullet (16.67% lose chance). Payout is 0.2x for winners. Expected value = ₱0 (perfectly fair).</li>
+                    <li><strong>Weighted Probabilities (Rigged):</strong> Secretly increases bullet probability from 16.67% to 20%. Same payout, but house gains 4% edge!</li>
+                    <li><strong>Key Insight:</strong> The "rigged gun" technique is nearly undetectable in short sessions because high variance masks the small probability difference.</li>
+                </ul>
+            </div>
+
+            <!-- Statistics Cards -->
+            <h3>📈 Simulation Statistics</h3>
+            <div class="stats-grid">
+                <div class="stats-card fair">
+                    <h3>✅ Fair Game Model</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Plays:</span>
+                        <span class="stat-value" id="fair-total-plays">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Wins / Losses:</span>
+                        <span class="stat-value" id="fair-wins-losses">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Win Rate:</span>
+                        <span class="stat-value" id="fair-win-rate">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">P(Win) / P(Lose):</span>
+                        <span class="stat-value" id="fair-probabilities">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Player Final Balance:</span>
+                        <span class="stat-value" id="fair-player-balance">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">House Final Balance:</span>
+                        <span class="stat-value" id="fair-house-balance">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Theoretical House Edge:</span>
+                        <span class="stat-value" id="fair-theoretical-edge">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Empirical House Edge:</span>
+                        <span class="stat-value" id="fair-empirical-edge">-</span>
+                    </div>
+                </div>
+                
+                <div class="stats-card tweaked">
+                    <h3>⚠️ Weighted Probs (Rigged)</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Plays:</span>
+                        <span class="stat-value" id="tweaked-total-plays">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Wins / Losses:</span>
+                        <span class="stat-value" id="tweaked-wins-losses">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Win Rate:</span>
+                        <span class="stat-value" id="tweaked-win-rate">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">P(Win) / P(Lose):</span>
+                        <span class="stat-value" id="tweaked-probabilities">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Player Final Balance:</span>
+                        <span class="stat-value" id="tweaked-player-balance">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">House Final Balance:</span>
+                        <span class="stat-value" id="tweaked-house-balance">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Theoretical House Edge:</span>
+                        <span class="stat-value" id="tweaked-theoretical-edge">-</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Empirical House Edge:</span>
+                        <span class="stat-value" id="tweaked-empirical-edge">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plots -->
+            <div class="plot-section">
+                <h3>📊 Cumulative Balance & Comparison Charts</h3>
+                <img id="plot-cumulative" class="plot-image" src="" alt="Cumulative Balance Charts">
+            </div>
+            
+            <div class="plot-section">
+                <h3>📈 Outcome Distribution</h3>
+                <img id="plot-distributions" class="plot-image" src="" alt="Outcome Distributions">
+            </div>
+            
+            <div class="plot-section">
+                <h3>💰 House Profit Comparison</h3>
+                <img id="plot-profit" class="plot-image" src="" alt="House Profit Comparison">
+            </div>
+            
+            <div class="plot-section">
+                <h3>🔍 Detectability Analysis - Why Tweaks Go Unnoticed</h3>
+                <img id="plot-detectability" class="plot-image" src="" alt="Detectability Analysis">
+            </div>
+
+            <!-- Key Findings -->
+            <div class="explanation-box">
+                <h4>🎯 Key Findings</h4>
+                <ul>
+                    <li><strong>The Fair Game</strong> shows near-zero house edge as expected - players break even over time.</li>
+                    <li><strong>The Rigged Gun</strong> creates a 4% house edge by secretly increasing bullet probability from 16.67% to 20%.</li>
+                    <li><strong>Detection is Nearly Impossible</strong> in short sessions because the variance (win +₱20 or lose -₱100) masks the 3.33% probability difference.</li>
+                    <li><strong>The Truth Only Emerges</strong> over thousands of plays - but no single player plays that many times!</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Back Button -->
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/" class="btn btn-secondary">← Back to Menu</a>
+        </div>
+    </div>
+
+    <script>
+        async function runSimulation() {
+            const numPlays = document.getElementById('numPlays').value;
+            const betAmount = document.getElementById('betAmount').value;
+            
+            // Show loading, hide results
+            document.getElementById('loadingSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('runSimulation').disabled = true;
+            document.getElementById('runSimulation').textContent = '⏳ Running...';
+            
+            try {
+                const response = await fetch('/api/run_simulation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ num_plays: numPlays, bet_amount: betAmount })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Update Fair Game stats
+                    document.getElementById('fair-total-plays').textContent = data.fair_stats.total_plays.toLocaleString();
+                    document.getElementById('fair-wins-losses').textContent = `${data.fair_stats.wins.toLocaleString()} / ${data.fair_stats.losses.toLocaleString()}`;
+                    document.getElementById('fair-win-rate').textContent = `${data.fair_stats.win_rate}%`;
+                    document.getElementById('fair-probabilities').textContent = `${data.fair_stats.p_win}% / ${data.fair_stats.p_lose}%`;
+                    
+                    const fairPlayerBalance = document.getElementById('fair-player-balance');
+                    fairPlayerBalance.textContent = `₱${data.fair_stats.player_final_balance.toLocaleString()}`;
+                    fairPlayerBalance.className = 'stat-value ' + (data.fair_stats.player_final_balance >= 0 ? 'positive' : 'negative');
+                    
+                    const fairHouseBalance = document.getElementById('fair-house-balance');
+                    fairHouseBalance.textContent = `₱${data.fair_stats.house_final_balance.toLocaleString()}`;
+                    fairHouseBalance.className = 'stat-value ' + (data.fair_stats.house_final_balance >= 0 ? 'positive' : 'negative');
+                    
+                    document.getElementById('fair-theoretical-edge').textContent = `${data.fair_stats.theoretical_house_edge}%`;
+                    document.getElementById('fair-empirical-edge').textContent = `${data.fair_stats.empirical_house_edge}%`;
+                    
+                    // Update Tweaked Game stats
+                    document.getElementById('tweaked-total-plays').textContent = data.tweaked_stats.total_plays.toLocaleString();
+                    document.getElementById('tweaked-wins-losses').textContent = `${data.tweaked_stats.wins.toLocaleString()} / ${data.tweaked_stats.losses.toLocaleString()}`;
+                    document.getElementById('tweaked-win-rate').textContent = `${data.tweaked_stats.win_rate}%`;
+                    document.getElementById('tweaked-probabilities').textContent = `${data.tweaked_stats.p_win}% / ${data.tweaked_stats.p_lose}%`;
+                    
+                    const tweakedPlayerBalance = document.getElementById('tweaked-player-balance');
+                    tweakedPlayerBalance.textContent = `₱${data.tweaked_stats.player_final_balance.toLocaleString()}`;
+                    tweakedPlayerBalance.className = 'stat-value ' + (data.tweaked_stats.player_final_balance >= 0 ? 'positive' : 'negative');
+                    
+                    const tweakedHouseBalance = document.getElementById('tweaked-house-balance');
+                    tweakedHouseBalance.textContent = `₱${data.tweaked_stats.house_final_balance.toLocaleString()}`;
+                    tweakedHouseBalance.className = 'stat-value ' + (data.tweaked_stats.house_final_balance >= 0 ? 'positive' : 'negative');
+                    
+                    document.getElementById('tweaked-theoretical-edge').textContent = `${data.tweaked_stats.theoretical_house_edge}%`;
+                    document.getElementById('tweaked-empirical-edge').textContent = `${data.tweaked_stats.empirical_house_edge}%`;
+                    
+                    // Update plots
+                    document.getElementById('plot-cumulative').src = 'data:image/png;base64,' + data.plots.cumulative;
+                    document.getElementById('plot-distributions').src = 'data:image/png;base64,' + data.plots.distributions;
+                    document.getElementById('plot-profit').src = 'data:image/png;base64,' + data.plots.profit_comparison;
+                    document.getElementById('plot-detectability').src = 'data:image/png;base64,' + data.plots.detectability;
+                    
+                    // Show results
+                    document.getElementById('resultsSection').classList.remove('hidden');
+                }
+            } catch (error) {
+                alert('Error running simulation: ' + error);
+            } finally {
+                document.getElementById('loadingSection').classList.add('hidden');
+                document.getElementById('runSimulation').disabled = false;
+                document.getElementById('runSimulation').textContent = '🚀 Run Simulation';
+            }
+        }
+    </script>
+</body>
+</html>

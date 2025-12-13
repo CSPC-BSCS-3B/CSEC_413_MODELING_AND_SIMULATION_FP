@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Setup - Russian Roulette</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container setup-container">
+        <h1>🎮 Game Setup</h1>
+
+        <form id="setupForm">
+            <!-- Game Mode (hidden, passed from index) -->
+            <input type="hidden" id="mode" name="mode">
+
+            <!-- Player Names -->
+            <div class="form-group">
+                <label for="player1">Player 1 Name (Boy 👦):</label>
+                <input type="text" id="player1" name="player1_name" placeholder="Enter name" value="Boy" required>
+            </div>
+
+            <div class="form-group" id="player2Group">
+                <label for="player2">Player 2 Name (Girl 👧):</label>
+                <input type="text" id="player2" name="player2_name" placeholder="Enter name" value="Girl" required>
+            </div>
+
+            <!-- Casino Mode Options (shown only for Mode 4) -->
+            <div id="casinoOptions" style="display: none;">
+                <h3>💰 Casino Mode Settings</h3>
+                <div class="form-group">
+                    <label for="startingBalance">Starting Balance (₱):</label>
+                    <input type="number" id="startingBalance" name="starting_balance" min="100" max="1000000" value="1000">
+                </div>
+                <div class="form-group">
+                    <label for="initialBet">Initial Bet (₱):</label>
+                    <input type="number" id="initialBet" name="initial_bet" min="10" max="10000" value="100">
+                    <small>Win = 2x Bet | Lose = Lose Bet</small>
+                </div>
+            </div>
+
+            <!-- Basic Game Settings -->
+            <h3>Game Settings</h3>
+
+            <div class="form-group">
+                <label for="chambers">Number of Chambers (3-12):</label>
+                <input type="number" id="chambers" name="chambers" min="3" max="12" value="6" required>
+            </div>
+
+            <div class="form-group">
+                <label for="bullets">Number of Bullets (1-5):</label>
+                <input type="number" id="bullets" name="bullets" min="1" max="5" value="1" required>
+            </div>
+
+            <!-- Tweaked Game Options (shown only for Mode 3) -->
+            <div id="tweakedOptions" style="display: none;">
+                <h3>Probability Tweaking Options</h3>
+
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="config_mode" value="A"> 
+                        Mode A: Round-Based Probabilities (Even vs Odd)
+                    </label>
+                </div>
+
+                <div id="modeAOptions" style="display: none;">
+                    <div class="form-group">
+                        <label for="evenProb">Bullet Probability in EVEN rounds (0-100%):</label>
+                        <input type="number" id="evenProb" name="even_round_prob" min="0" max="100" value="20" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="oddProb">Bullet Probability in ODD rounds (0-100%):</label>
+                        <input type="number" id="oddProb" name="odd_round_prob" min="0" max="100" value="10" step="0.1">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="config_mode" value="B"> 
+                        Mode B: Bullet Position Bias (Early vs Late)
+                    </label>
+                </div>
+
+                <div id="modeBOptions" style="display: none;">
+                    <div class="form-group">
+                        <label for="bulletBias">Early Bullet Bias (0-100%, default 50 for random):</label>
+                        <input type="number" id="bulletBias" name="early_bullet_bias" min="0" max="100" value="50" step="0.1">
+                        <small>0-40: Late rounds | 50: Random | 60-100: Early rounds</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="radio" name="config_mode" value="C" checked> 
+                        Mode C: Standard Fair Game
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success">Start Game</button>
+            <a href="/" class="btn btn-secondary">Back</a>
+        </form>
+    </div>
+
+    <script>
+        const mode = sessionStorage.getItem('gameMode') || '2';
+        document.getElementById('mode').value = mode;
+
+        // Show tweaked options for mode 3 or 4, casino options for mode 4
+        const setupForm = document.getElementById('setupForm');
+        if (mode === '3' || mode === '4') {
+            document.getElementById('tweakedOptions').style.display = 'block';
+        }
+        if (mode === '4') {
+            document.getElementById('casinoOptions').style.display = 'block';
+            document.getElementById('player2Group').style.display = 'none';
+            document.getElementById('player2').value = 'Computer 🤖';
+            document.getElementById('player2').required = false;
+        }
+
+        // Handle config mode selection
+        document.querySelectorAll('input[name="config_mode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('modeAOptions').style.display = 
+                    this.value === 'A' ? 'block' : 'none';
+                document.getElementById('modeBOptions').style.display = 
+                    this.value === 'B' ? 'block' : 'none';
+            });
+        });
+
+        // Form submission
+        setupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(setupForm);
+            const data = {
+                mode: document.getElementById('mode').value,
+                player1_name: document.getElementById('player1').value,
+                player2_name: document.getElementById('player2').value,
+                chambers: document.getElementById('chambers').value,
+                bullets: document.getElementById('bullets').value,
+            };
+
+            // Add tweaked options if mode 3 or 4
+            if (mode === '3' || mode === '4') {
+                const configMode = document.querySelector('input[name="config_mode"]:checked').value;
+                data.config_mode = configMode;
+                if (configMode === 'A') {
+                    data.even_round_prob = parseFloat(document.getElementById('evenProb').value) / 100;
+                    data.odd_round_prob = parseFloat(document.getElementById('oddProb').value) / 100;
+                } else if (configMode === 'B') {
+                    data.early_bullet_bias = parseFloat(document.getElementById('bulletBias').value) / 100;
+                }
+            }
+
+            // Add casino mode options if mode 4
+            if (mode === '4') {
+                data.starting_balance = parseInt(document.getElementById('startingBalance').value);
+                data.initial_bet = parseInt(document.getElementById('initialBet').value);
+                data.player2_name = 'Computer 🤖';
+            }
+
+            try {
+                const response = await fetch('/setup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.status === 'success') {
+                    window.location.href = result.redirect;
+                }
+            } catch (error) {
+                alert('Error setting up game: ' + error);
+            }
+        });
+    </script>
+</body>
+</html>

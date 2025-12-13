@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Over - Russian Roulette</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container game-over-container">
+        <div class="game-over-content">
+            <h1>💥 GAME OVER</h1>
+            
+            <div class="winner-info">
+                <h2>🏆 {{ winner }} WINS! 🏆</h2>
+                <p class="loser-text">{{ loser }} has been eliminated...</p>
+            </div>
+
+            <div class="game-over-buttons">
+                <button class="btn btn-success btn-large" onclick="playAgain()">
+                    🎮 PLAY AGAIN
+                </button>
+                <button class="btn btn-secondary btn-large" onclick="mainMenu()">
+                    🏠 MAIN MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function playAgain() {
+            window.location.href = '/new_game';
+        }
+
+        function mainMenu() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

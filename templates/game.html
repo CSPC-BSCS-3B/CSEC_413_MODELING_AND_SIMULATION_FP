@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game - Russian Roulette</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container game-container">
+        <!-- Casino Mode Balance Bar (only shown in mode 4) -->
+        {% if game_info.is_casino_mode %}
+        <div class="casino-bar">
+            <div class="balance-display">
+                💰 Balance: <span id="currentBalance">₱{{ '{:,}'.format(game_info.current_balance) }}</span>
+            </div>
+            <div class="bet-display">
+                🎰 Current Bet: <span id="currentBet">₱{{ '{:,}'.format(game_info.current_bet) }}</span>
+                <button class="btn btn-small" onclick="changeBet()">Change</button>
+            </div>
+            <div class="stats-display">
+                W: <span id="totalWins" class="wins">{{ game_info.total_wins }}</span> | 
+                L: <span id="totalLosses" class="losses">{{ game_info.total_losses }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Game Header -->
+        <div class="game-header">
+            <h1>🎮 Russian Roulette - Round {{ game_info.round }}</h1>
+            <div class="players-info">
+                <span>👦 {{ game_info.player1_name }}</span>
+                <span> VS </span>
+                <span>{% if game_info.is_casino_mode %}🤖{% else %}👧{% endif %} {{ game_info.player2_name }}</span>
+            </div>
+            <div class="current-player">
+                Current Player: <strong id="currentPlayerName">{{ game_info.current_player }}</strong>
+                <span id="playerIcon">{% if game_info.current_player_is_boy %}👦{% elif game_info.is_casino_mode %}🤖{% else %}👧{% endif %}</span>
+            </div>
+        </div>
+
+        <!-- Game Image Display -->
+        <div class="game-image-section">
+            <img id="gameImage" 
+                 src="{{ url_for('static', filename='assets/' + game_info.image) }}" 
+                 alt="Game Scene" 
+                 class="game-image">
+        </div>
+
+        <!-- Game Info -->
+        <div class="game-info">
+            <p>Chambers: {{ game_info.chambers }} | Bullets: {{ game_info.bullets }} | Checked: {{ game_info.chambers_checked }}/{{ game_info.chambers }}</p>
+            <p id="roundInfo">Round: <span id="roundNumber">{{ game_info.round }}</span></p>
+            {% if game_info.prob_info %}
+            <p style="color: #e74c3c; font-weight: bold;">📊 {{ game_info.prob_info }}</p>
+            {% endif %}
+            {% if game_info.mode == '3' %}
+            <p style="color: #667eea; font-size: 12px;">⚙️ Tweaked Game Mode Active</p>
+            {% elif game_info.mode == '4' %}
+            <p style="color: #f39c12; font-size: 12px;">💰 Casino Mode - Win to Double, Lose to Forfeit!</p>
+            {% endif %}
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="game-controls" id="gameControls">
+            <button id="actionButton" class="btn btn-primary btn-large" onclick="advanceGame()">
+                ▶️ CONTINUE
+            </button>
+        </div>
+
+        <!-- Game Status/Message -->
+        <div id="statusMessage" class="status-message"></div>
+
+        <!-- Back Button -->
+        <a href="/" class="btn btn-secondary" style="margin-top: 20px;">Back to Menu</a>
+    </div>
+
+    <script>
+        // Game state
+        let gamePhase = "{{ game_info.image_phase }}";
+        let currentPlayerIsBoy = {{ 'true' if game_info.current_player_is_boy else 'false' }};
+        let gameOver = {{ 'true' if game_info.game_over else 'false' }};
+        const isCasinoMode = {{ 'true' if game_info.is_casino_mode else 'false' }};
+        const assetsPath = "{{ url_for('static', filename='assets/') }}";
+
+        // Update button based on phase
+        function updateButton() {
+            const button = document.getElementById('actionButton');
+            
+            if (gameOver) {
+                if (isCasinoMode) {
+                    button.textContent = '🎰 PLAY AGAIN';
+                } else {
+                    button.textContent = '🎮 PLAY AGAIN';
+                }
+                button.className = 'btn btn-success btn-large';
+                button.onclick = isCasinoMode ? casinoRematch : newGame;
+            } else if (gamePhase === 'start' || gamePhase === 'getting_gun') {
+                button.textContent = '▶️ CONTINUE';
+                button.className = 'btn btn-primary btn-large';
+                button.onclick = advanceGame;
+            } else if (gamePhase === 'pointing') {
+                button.textContent = '🔫 PULL TRIGGER';
+                button.className = 'btn btn-danger btn-large';
+                button.onclick = advanceGame;
+            }
+        }
+
+        // Initialize on load
+        updateButton();
+
+        async function advanceGame() {
+            const button = document.getElementById('actionButton');
+            button.disabled = true;
+
+            if (gamePhase === 'start' || gamePhase === 'getting_gun') {
+                // Advance to next phase (image transition)
+                try {
+                    const response = await fetch('/api/advance_phase', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        document.getElementById('gameImage').src = assetsPath + result.image;
+                        gamePhase = result.phase;
+                        updateButton();
+                    }
+                } catch (error) {
+                    showMessage('Error: ' + error, 'danger');
+                }
+                button.disabled = false;
+            } else if (gamePhase === 'pointing') {
+                // Pull trigger
+                await pullTrigger();
+            }
+        }
+
+        async function pullTrigger() {
+            const button = document.getElementById('actionButton');
+            button.textContent = '⏳ PULLING...';
+
+            try {
+                const response = await fetch('/api/pull_trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'reload') {
+                    showMessage('⚠️ All chambers exhausted! Gun reloaded.', 'info');
+                    document.getElementById('gameImage').src = assetsPath + result.image;
+                    setTimeout(() => location.reload(), 2000);
+                } else if (result.status === 'success') {
+                    // Show outcome image
+                    document.getElementById('gameImage').src = assetsPath + result.image;
+                    showMessage(result.message, result.result === 'bang' ? 'danger' : 'success');
+                    
+                    // Update casino mode balance display
+                    if (result.is_casino_mode) {
+                        document.getElementById('currentBalance').textContent = '₱' + result.current_balance.toLocaleString();
+                        document.getElementById('totalWins').textContent = result.total_wins;
+                        document.getElementById('totalLosses').textContent = result.total_losses;
+                    }
+                    
+                    if (result.game_over) {
+                        gameOver = true;
+                        updateButton();
+                        button.disabled = false;
+                        
+                        // In casino mode, don't redirect to game_over page
+                        if (isCasinoMode) {
+                            // Stay on page, let player click rematch
+                        } else {
+                            setTimeout(() => {
+                                window.location.href = '/game_over';
+                            }, 2500);
+                        }
+                    } else {
+                        // After showing safe result, continue to next turn
+                        setTimeout(() => {
+                            // Update current player info
+                            document.getElementById('currentPlayerName').textContent = result.current_player;
+                            document.getElementById('playerIcon').textContent = result.current_player_is_boy ? '👦' : (isCasinoMode ? '🤖' : '👧');
+                            currentPlayerIsBoy = result.current_player_is_boy;
+                            gamePhase = 'getting_gun';
+                            
+                            // Get the next image (player getting gun)
+                            location.reload();
+                        }, 2000);
+                    }
+                }
+            } catch (error) {
+                showMessage('Error: ' + error, 'danger');
+                button.disabled = false;
+                updateButton();
+            }
+        }
+
+        function showMessage(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message ' + type;
+            statusDiv.style.display = 'block';
+        }
+
+        function newGame() {
+            window.location.href = '/new_game';
+        }
+
+        // Casino mode functions
+        async function casinoRematch() {
+            try {
+                const response = await fetch('/api/casino_rematch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    window.location.href = result.redirect;
+                } else {
+                    showMessage(result.message, 'danger');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error, 'danger');
+            }
+        }
+
+        async function changeBet() {
+            const currentBet = parseInt(document.getElementById('currentBet').textContent.replace(/[₱,]/g, ''));
+            const newBet = prompt('Enter new bet amount (₱):', currentBet);
+            
+            if (newBet === null) return;
+            
+            const betAmount = parseInt(newBet);
+            if (isNaN(betAmount) || betAmount < 10) {
+                showMessage('Invalid bet amount. Minimum is ₱10', 'danger');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/change_bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_bet: betAmount })
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    document.getElementById('currentBet').textContent = '₱' + result.new_bet.toLocaleString();
+                    showMessage(result.message, 'success');
+                } else {
+                    showMessage(result.message, 'danger');
+                }
+            } catch (error) {
+                showMessage('Error: ' + error, 'danger');
+            }
+        }
+    </script>
+</body>
+</html>

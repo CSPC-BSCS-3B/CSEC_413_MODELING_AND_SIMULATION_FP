@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russian Roulette - Game Mode Selection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="title-section">
+            <h1>🔫 RUSSIAN ROULETTE</h1>
+            <h2>CSEC 413 - Modeling and Simulation</h2>
+            <p>Choose a game mode to begin</p>
+        </div>
+
+        <div class="modes-grid">
+            <!-- Mode 1: Simulation -->
+            <div class="mode-card" onclick="selectMode('1')">
+                <div class="mode-icon">📊</div>
+                <h3>Monte Carlo Simulation</h3>
+                <p>10,000+ plays analysis with visualizations and statistical comparison</p>
+                <button class="btn btn-primary">Select Mode 1</button>
+            </div>
+
+            <!-- Mode 2: Standard Game -->
+            <div class="mode-card" onclick="selectMode('2')">
+                <div class="mode-icon">🎮</div>
+                <h3>Standard 2-Player Game</h3>
+                <p>Fair game with standard mechanics</p>
+                <button class="btn btn-primary">Select Mode 2</button>
+            </div>
+
+            <!-- Mode 3: Tweaked Game -->
+            <div class="mode-card" onclick="selectMode('3')">
+                <div class="mode-icon">⚙️</div>
+                <h3>Tweaked 2-Player Game</h3>
+                <p>Customize probabilities and game mechanics</p>
+                <button class="btn btn-primary">Select Mode 3</button>
+            </div>
+
+            <!-- Mode 4: Casino Mode -->
+            <div class="mode-card" onclick="selectMode('4')">
+                <div class="mode-icon">💰</div>
+                <h3>Casino Mode (vs Computer)</h3>
+                <p>Bet money against the computer! Win = Double, Lose = Lose bet</p>
+                <button class="btn btn-primary">Select Mode 4</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectMode(mode) {
+            if (mode === '1') {
+                // Redirect to simulation (terminal-based)
+                window.location.href = '/simulation';
+            } else if (mode === '2' || mode === '3' || mode === '4') {
+                // Go to setup page
+                sessionStorage.setItem('gameMode', mode);
+                window.location.href = '/setup';
+            }
+        }
+    </script>
+</body>
+</html>
