@@ -5,6 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Setup - Russian Roulette</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .prob-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .prob-display .total {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .prob-display .valid {
+            color: #4ade80;
+        }
+        .prob-breakdown {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        .prob-item {
+            text-align: center;
+        }
+        .prob-item .value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        .prob-item .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .advantage-indicator {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .house-advantage {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        .player-advantage {
+            background: #bbf7d0;
+            color: #166534;
+        }
+        .fair-game {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+    </style>
 </head>
 <body>
     <div class="container setup-container">
@@ -52,52 +103,55 @@
                 <input type="number" id="bullets" name="bullets" min="1" max="5" value="1" required>
             </div>
 
-            <!-- Tweaked Game Options (shown only for Mode 3) -->
+            <!-- Tweaked Game Options (shown only for Mode 3 or 4) -->
             <div id="tweakedOptions" style="display: none;">
-                <h3>Probability Tweaking Options</h3>
+                <h3>🎯 Probability Settings</h3>
+                <p style="color: #666; margin-bottom: 15px;">
+                    Set the probability that the bullet is placed in an <strong>EVEN</strong> chamber (Computer's turns).
+                    The <strong>ODD</strong> probability (Player's turns) is automatically calculated to ensure they sum to 100%.
+                </p>
+
+                <div class="form-group">
+                    <label for="evenProb">Bullet in EVEN Chamber (Computer's turns):</label>
+                    <input type="range" id="evenProb" name="even_prob" min="0" max="100" value="35" step="1" oninput="updateProbDisplay()">
+                    <div class="prob-display">
+                        <div class="prob-breakdown">
+                            <div class="prob-item">
+                                <div class="value" id="evenProbValue">35%</div>
+                                <div class="label">Even (Computer)</div>
+                            </div>
+                            <div class="prob-item">
+                                <div class="value">+</div>
+                                <div class="label">&nbsp;</div>
+                            </div>
+                            <div class="prob-item">
+                                <div class="value" id="oddProbValue">65%</div>
+                                <div class="label">Odd (Player)</div>
+                            </div>
+                            <div class="prob-item">
+                                <div class="value">=</div>
+                                <div class="label">&nbsp;</div>
+                            </div>
+                            <div class="prob-item">
+                                <div class="value total valid">100%</div>
+                                <div class="label">Total ✓</div>
+                            </div>
+                        </div>
+                        <div id="advantageIndicator" class="advantage-indicator house-advantage">
+                            🏠 House Advantage: Player more likely to get shot
+                        </div>
+                    </div>
+                </div>
 
                 <div class="form-group">
                     <label>
-                        <input type="radio" name="config_mode" value="A"> 
-                        Mode A: Round-Based Probabilities (Even vs Odd)
-                    </label>
-                </div>
-
-                <div id="modeAOptions" style="display: none;">
-                    <div class="form-group">
-                        <label for="evenProb">Bullet Probability in EVEN rounds (0-100%):</label>
-                        <input type="number" id="evenProb" name="even_round_prob" min="0" max="100" value="20" step="0.1">
-                    </div>
-                    <div class="form-group">
-                        <label for="oddProb">Bullet Probability in ODD rounds (0-100%):</label>
-                        <input type="number" id="oddProb" name="odd_round_prob" min="0" max="100" value="10" step="0.1">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="radio" name="config_mode" value="B"> 
-                        Mode B: Bullet Position Bias (Early vs Late)
-                    </label>
-                </div>
-
-                <div id="modeBOptions" style="display: none;">
-                    <div class="form-group">
-                        <label for="bulletBias">Early Bullet Bias (0-100%, default 50 for random):</label>
-                        <input type="number" id="bulletBias" name="early_bullet_bias" min="0" max="100" value="50" step="0.1">
-                        <small>0-40: Late rounds | 50: Random | 60-100: Early rounds</small>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="radio" name="config_mode" value="C" checked> 
-                        Mode C: Standard Fair Game
+                        <input type="checkbox" id="useFairGame" onchange="toggleFairGame()">
+                        Use Fair Game (50/50 distribution)
                     </label>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-success">Start Game</button>
+            <button type="submit" class="btn btn-success" id="submitBtn">Start Game</button>
             <a href="/" class="btn btn-secondary">Back</a>
         </form>
     </div>
@@ -107,7 +161,6 @@
         document.getElementById('mode').value = mode;
 
         // Show tweaked options for mode 3 or 4, casino options for mode 4
-        const setupForm = document.getElementById('setupForm');
         if (mode === '3' || mode === '4') {
             document.getElementById('tweakedOptions').style.display = 'block';
         }
@@ -118,21 +171,49 @@
             document.getElementById('player2').required = false;
         }
 
-        // Handle config mode selection
-        document.querySelectorAll('input[name="config_mode"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                document.getElementById('modeAOptions').style.display = 
-                    this.value === 'A' ? 'block' : 'none';
-                document.getElementById('modeBOptions').style.display = 
-                    this.value === 'B' ? 'block' : 'none';
-            });
-        });
+        function updateProbDisplay() {
+            const evenProb = parseInt(document.getElementById('evenProb').value);
+            const oddProb = 100 - evenProb;
+            
+            document.getElementById('evenProbValue').textContent = evenProb + '%';
+            document.getElementById('oddProbValue').textContent = oddProb + '%';
+            
+            const indicator = document.getElementById('advantageIndicator');
+            if (evenProb < 50) {
+                indicator.className = 'advantage-indicator house-advantage';
+                indicator.innerHTML = '🏠 House Advantage: Player (' + oddProb + '%) more likely to get shot';
+            } else if (evenProb > 50) {
+                indicator.className = 'advantage-indicator player-advantage';
+                indicator.innerHTML = '🎉 Player Advantage: Computer (' + evenProb + '%) more likely to get shot';
+            } else {
+                indicator.className = 'advantage-indicator fair-game';
+                indicator.innerHTML = '⚖️ Fair Game: Equal 50/50 chance';
+            }
+        }
+
+        function toggleFairGame() {
+            const isFair = document.getElementById('useFairGame').checked;
+            const slider = document.getElementById('evenProb');
+            
+            if (isFair) {
+                slider.value = 50;
+                slider.disabled = true;
+            } else {
+                slider.disabled = false;
+            }
+            updateProbDisplay();
+        }
+
+        // Initial display update
+        updateProbDisplay();
 
         // Form submission
-        setupForm.addEventListener('submit', async (e) => {
+        document.getElementById('setupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = new FormData(setupForm);
+            const useFairGame = document.getElementById('useFairGame')?.checked || false;
+            const evenProb = useFairGame ? null : parseInt(document.getElementById('evenProb').value);
+            
             const data = {
                 mode: document.getElementById('mode').value,
                 player1_name: document.getElementById('player1').value,
@@ -143,13 +224,8 @@
 
             // Add tweaked options if mode 3 or 4
             if (mode === '3' || mode === '4') {
-                const configMode = document.querySelector('input[name="config_mode"]:checked').value;
-                data.config_mode = configMode;
-                if (configMode === 'A') {
-                    data.even_round_prob = parseFloat(document.getElementById('evenProb').value) / 100;
-                    data.odd_round_prob = parseFloat(document.getElementById('oddProb').value) / 100;
-                } else if (configMode === 'B') {
-                    data.early_bullet_bias = parseFloat(document.getElementById('bulletBias').value) / 100;
+                if (!useFairGame && evenProb !== null) {
+                    data.even_prob = evenProb;  // Send as 0-100, server will divide by 100
                 }
             }
 
@@ -172,6 +248,8 @@
                 const result = await response.json();
                 if (result.status === 'success') {
                     window.location.href = result.redirect;
+                } else {
+                    alert('Error: ' + result.message);
                 }
             } catch (error) {
                 alert('Error setting up game: ' + error);

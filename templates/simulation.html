@@ -170,6 +170,14 @@
                     <input type="number" id="betAmount" value="100" min="1" max="10000">
                     <small>Amount wagered per play</small>
                 </div>
+                <div class="form-group">
+                    <label for="evenProb">House Advantage (Even Probability):</label>
+                    <input type="range" id="evenProb" value="35" min="0" max="100" step="1" oninput="updateProbLabel()">
+                    <div id="probLabel" style="text-align: center; margin-top: 5px; font-weight: bold;">
+                        Even: 35% + Odd: 65% = 100% (House Advantage)
+                    </div>
+                    <small>Lower even % = more house advantage</small>
+                </div>
             </div>
             <button id="runSimulation" class="btn btn-primary btn-large" style="margin-top: 20px;" onclick="runSimulation()">
                 🚀 Run Simulation
@@ -225,11 +233,11 @@
                         <span class="stat-value" id="fair-house-balance">-</span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">Theoretical House Edge:</span>
+                        <span class="stat-label">Theoretical Win Rate:</span>
                         <span class="stat-value" id="fair-theoretical-edge">-</span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">Empirical House Edge:</span>
+                        <span class="stat-label">Empirical Win Rate:</span>
                         <span class="stat-value" id="fair-empirical-edge">-</span>
                     </div>
                 </div>
@@ -261,11 +269,11 @@
                         <span class="stat-value" id="tweaked-house-balance">-</span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">Theoretical House Edge:</span>
+                        <span class="stat-label">Theoretical Win Rate:</span>
                         <span class="stat-value" id="tweaked-theoretical-edge">-</span>
                     </div>
                     <div class="stat-row">
-                        <span class="stat-label">Empirical House Edge:</span>
+                        <span class="stat-label">Empirical Win Rate:</span>
                         <span class="stat-value" id="tweaked-empirical-edge">-</span>
                     </div>
                 </div>
@@ -311,6 +319,16 @@
     </div>
 
     <script>
+        function updateProbLabel() {
+            const evenProb = parseInt(document.getElementById('evenProb').value);
+            const oddProb = 100 - evenProb;
+            let advantage = 'Fair Game';
+            if (evenProb < 50) advantage = 'House Advantage';
+            else if (evenProb > 50) advantage = 'Player Advantage';
+            document.getElementById('probLabel').innerHTML = 
+                `Even: <span style="color:#27ae60">${evenProb}%</span> + Odd: <span style="color:#e74c3c">${oddProb}%</span> = 100% <strong>(${advantage})</strong>`;
+        }
+        
         async function runSimulation() {
             const numPlays = document.getElementById('numPlays').value;
             const betAmount = document.getElementById('betAmount').value;
@@ -321,11 +339,17 @@
             document.getElementById('runSimulation').disabled = true;
             document.getElementById('runSimulation').textContent = '⏳ Running...';
             
+            const evenProb = parseInt(document.getElementById('evenProb').value);
+            
             try {
                 const response = await fetch('/api/run_simulation', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ num_plays: numPlays, bet_amount: betAmount })
+                    body: JSON.stringify({ 
+                        num_plays: numPlays, 
+                        bet_amount: betAmount,
+                        even_prob: evenProb  // Send even_prob (0-100)
+                    })
                 });
                 
                 const data = await response.json();
@@ -345,14 +369,14 @@
                     fairHouseBalance.textContent = `₱${data.fair_stats.house_final_balance.toLocaleString()}`;
                     fairHouseBalance.className = 'stat-value ' + (data.fair_stats.house_final_balance >= 0 ? 'positive' : 'negative');
                     
-                    document.getElementById('fair-theoretical-edge').textContent = `${data.fair_stats.theoretical_house_edge}%`;
-                    document.getElementById('fair-empirical-edge').textContent = `${data.fair_stats.empirical_house_edge}%`;
+                    document.getElementById('fair-theoretical-edge').textContent = `${data.fair_stats.theoretical_win_rate}%`;
+                    document.getElementById('fair-empirical-edge').textContent = `${data.fair_stats.empirical_win_rate}%`;
                     
                     // Update Tweaked Game stats
                     document.getElementById('tweaked-total-plays').textContent = data.tweaked_stats.total_plays.toLocaleString();
                     document.getElementById('tweaked-wins-losses').textContent = `${data.tweaked_stats.wins.toLocaleString()} / ${data.tweaked_stats.losses.toLocaleString()}`;
                     document.getElementById('tweaked-win-rate').textContent = `${data.tweaked_stats.win_rate}%`;
-                    document.getElementById('tweaked-probabilities').textContent = `${data.tweaked_stats.p_win}% / ${data.tweaked_stats.p_lose}%`;
+                    document.getElementById('tweaked-probabilities').textContent = `Even: ${data.tweaked_stats.even_prob}% / Odd: ${data.tweaked_stats.odd_prob}%`;
                     
                     const tweakedPlayerBalance = document.getElementById('tweaked-player-balance');
                     tweakedPlayerBalance.textContent = `₱${data.tweaked_stats.player_final_balance.toLocaleString()}`;
@@ -362,8 +386,8 @@
                     tweakedHouseBalance.textContent = `₱${data.tweaked_stats.house_final_balance.toLocaleString()}`;
                     tweakedHouseBalance.className = 'stat-value ' + (data.tweaked_stats.house_final_balance >= 0 ? 'positive' : 'negative');
                     
-                    document.getElementById('tweaked-theoretical-edge').textContent = `${data.tweaked_stats.theoretical_house_edge}%`;
-                    document.getElementById('tweaked-empirical-edge').textContent = `${data.tweaked_stats.empirical_house_edge}%`;
+                    document.getElementById('tweaked-theoretical-edge').textContent = `${data.tweaked_stats.theoretical_win_rate}%`;
+                    document.getElementById('tweaked-empirical-edge').textContent = `${data.tweaked_stats.empirical_win_rate}%`;
                     
                     // Update plots
                     document.getElementById('plot-cumulative').src = 'data:image/png;base64,' + data.plots.cumulative;
