@@ -575,21 +575,38 @@ def save_game_state(game_state):
 def get_image_sequence(game_state):
     """Get appropriate image based on game phase."""
     current_player_is_boy = (game_state.current_player_index == 0)
+    is_casino_mode = game_state.is_casino_mode
     
     if game_state.round_number == 1 and game_state.image_phase == 'start':
+        if is_casino_mode:
+            return "computer vs player/first_image_gun_in_table.png"
         return "first_image_gun_in_table.png"
     
     if game_state.image_phase == 'getting_gun':
-        if current_player_is_boy:
-            return "2nd_boy_getting_gun.png"
+        if is_casino_mode:
+            if current_player_is_boy:
+                return "computer vs player/2nd_player_getting_gun.png"
+            else:
+                return "computer vs player/2nd_computer_getting_gun.png"
         else:
-            return "2nd_girl_getting_gun.png"
+            if current_player_is_boy:
+                return "2nd_boy_getting_gun.png"
+            else:
+                return "2nd_girl_getting_gun.png"
     elif game_state.image_phase == 'pointing':
-        if current_player_is_boy:
-            return "3rd_gun_pointed_to_boy.png"
+        if is_casino_mode:
+            if current_player_is_boy:
+                return "computer vs player/3rd_gun_pointed_to_player.png"
+            else:
+                return "computer vs player/3rd_gun_pointed_to_computer.png"
         else:
-            return "3rd_gun_pointed_to_girl.png"
+            if current_player_is_boy:
+                return "3rd_gun_pointed_to_boy.png"
+            else:
+                return "3rd_gun_pointed_to_girl.png"
     
+    if is_casino_mode:
+        return "computer vs player/first_image_gun_in_table.png"
     return "first_image_gun_in_table.png"
 
 
@@ -724,7 +741,12 @@ def pull_trigger():
         game_state.winner = other_player
         game_state.loser = current_player
         game_state.image_phase = 'outcome'
-        image = f"4th_gun_shot_{'boy' if current_player_is_boy else 'girl'}.png"
+        
+        # Use different images for casino mode (player vs computer)
+        if game_state.is_casino_mode:
+            image = f"computer vs player/4th_gun_shot_{'player' if current_player_is_boy else 'computer'}.png"
+        else:
+            image = f"4th_gun_shot_{'boy' if current_player_is_boy else 'girl'}.png"
         message = f"💥 BANG! {current_player} has been eliminated!"
         
         # Casino mode: handle win/loss
@@ -738,10 +760,17 @@ def pull_trigger():
                 game_state.total_wins += 1
                 message += f" You won ₱{game_state.current_bet:,}!"
     else:
-        if current_player_is_boy:
-            image = "4th_gun_shot_safe_bring_back_gun_to_table.boy.png"
+        # Safe outcome - use different images for casino mode
+        if game_state.is_casino_mode:
+            if current_player_is_boy:
+                image = "computer vs player/4th_gun_shot_safe_bring_back_gun_to_table_player.png"
+            else:
+                image = "computer vs player/4th_gun_shot_safe_bring_back_gun_to_table_computer.png"
         else:
-            image = "4th_gun_shot_safe_bring_back_gun_to_table_girl.png"
+            if current_player_is_boy:
+                image = "4th_gun_shot_safe_bring_back_gun_to_table.boy.png"
+            else:
+                image = "4th_gun_shot_safe_bring_back_gun_to_table_girl.png"
         message = f"✅ {current_player} survives Round {game_state.round_number}!"
         game_state.switch_player()
         game_state.round_number += 1
