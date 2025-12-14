@@ -31,7 +31,7 @@ The main objective of this project is to **simulate and analyze probability-driv
 ## 🚀 How to Run the Project
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/your-repo-name.git
+   git clone https://github.com/CSPC-BSCS-3B/CSEC_413_MODELING_AND_SIMULATION_FP.git
 
 2. Open the project folder.
 
