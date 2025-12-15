@@ -33,11 +33,32 @@ The main objective of this project is to **simulate and analyze probability-driv
    ```bash
    git clone https://github.com/CSPC-BSCS-3B/CSEC_413_MODELING_AND_SIMULATION_FP.git
 
-2. Open the project folder.
+2. Navigate into the project folder:
+   ```bash
+   cd CSEC_413_MODELING_AND_SIMULATION_FP
 
-3. Run the game by opening index.html in a web browser.
+3. Create and activate a virtual environment:
+   ```bash
+   # Create venv
+   python -m venv venv
+  
+   # Activate venv (Windows)
+   venv\Scripts\activate
+  
+   # Activate venv (Mac/Linux)
+   source venv/bin/activate
 
-4. Choose a game mode and start playing or simulating.
+4. Install dependencies
+   ```bash
+   pip install -r requirements.txt
+
+5. Run the Flask application
+   ```bash
+   python run.py
+  
+6. Open the app in your browser
+   ```bash
+   http://127.0.0.1:5000
 
 ⚠️ Disclaimer
 
